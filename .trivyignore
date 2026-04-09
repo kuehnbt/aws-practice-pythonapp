@@ -1,0 +1,2 @@
+# starlette DoS, blocked by fastapi upper bound on starlette. Revisit monthly.
+CVE-2025-62727

@@ -1,0 +1,73 @@
+name: Weekly Security Rescan
+
+on:
+  schedule:
+    - cron: '17 13 * * 1'   # Mondays 13:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+env:
+  PYTHON_VERSION: '3.12'
+  AWS_REGION:     us-east-1
+
+jobs:
+  deps:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pip-audit
+      - name: pip-audit
+        # Suppressions tracked in docs/security-suppressions.md
+        run: |
+          pip-audit -r src/app/requirements.txt --strict \
+            --ignore-vuln CVE-2025-62727
+
+  image:
+    name: Trivy scan of latest published image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Pull latest image
+        run: |
+          tag=$(aws ecr describe-images --repository-name bgs-hello \
+            --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' --output text)
+          docker pull "${{ steps.ecr.outputs.registry }}/bgs-hello:$tag"
+          echo "IMAGE=${{ steps.ecr.outputs.registry }}/bgs-hello:$tag" >> "$GITHUB_ENV"
+
+      - name: Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly security scan failed on ${new Date().toISOString().slice(0,10)}`,
+              body: 'Trivy found HIGH/CRITICAL vulnerabilities in the most recent image. See workflow run for details.',
+              labels: ['security', 'automated'],
+            });

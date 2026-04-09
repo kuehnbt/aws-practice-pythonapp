@@ -1,0 +1,10 @@
+# Copy to backend.dev.hcl (gitignored) and fill in values from
+# `terraform -chdir=../bootstrap output`.
+#
+#     terraform init -backend-config=backend.dev.hcl
+
+bucket         = "bgs-hello-tfstate-REPLACE-WITH-YOUR-ACCOUNT-ID"
+key            = "bgs-hello/app/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "bgs-hello-tflock"
+encrypt        = true

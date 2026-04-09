@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Type checkers
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Infra / state
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl.bak
+backend.*.hcl
+!backend.*.hcl.example
+deploy-state.json
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Docs
+HELPER.md
+PROMPT.md

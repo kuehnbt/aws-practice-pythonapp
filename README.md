@@ -11,7 +11,7 @@ and security practices** around it.
           ┌───────────────┐     push     ┌──────────┐
  dev  ──▶ │ GitHub (main) │ ───────────▶ │ Actions  │
           └───────────────┘              └────┬─────┘
-                                              │ OIDC (no long-lived keys)
+                                              │ OIDC
                                               ▼
                                        ┌──────────────┐
                                        │ AWS account  │
@@ -28,16 +28,16 @@ user→ │  ALB   │──▶ │ ECS  │──▶ │ Fargate task (FastAPI 
 
 ```
 .
-├── src/app/                    # FastAPI app (~40 lines)
-├── tests/                      # pytest for the app
-├── Dockerfile                  # multi-stage, non-root, healthcheck
+├── src/app/
+├── tests/
+├── Dockerfile
 ├── terraform/
-│   ├── bootstrap/              # ONE-TIME: state backend + OIDC + ECR
-│   └── app/                    # applied by CI: VPC/ALB/ECS/logs/alarms
+│   ├── bootstrap/
+│   └── app/ 
 ├── .github/workflows/
-│   ├── pr.yml                  # lint/test/audit/scan/plan-on-PR
-│   ├── deploy.yml              # build/push/apply/smoke-test
-│   └── security.yml            # weekly rescan, opens issue on findings
+│   ├── pr.yml
+│   ├── deploy.yml
+│   └── security.yml
 ├── Makefile
 ├── pyproject.toml
 ├── HELPER.md
@@ -45,18 +45,18 @@ user→ │  ALB   │──▶ │ ECS  │──▶ │ Fargate task (FastAPI 
 └── README.md (you are here)
 ```
 
-## Quickstart (local dev)
+## Quickstart
 
 ```bash
-make install          # venv + pip install -e ".[dev]"
-make check            # lint + type + test + audit
-make build-image      # docker build .
-make run-local        # localhost:8080
+make install
+make check
+make build-image
+make run-local
 ```
 
 Endpoints: `GET /`, `GET /healthz`, `GET /info`.
 
-## One-Time Bootstrap (human-operated)
+## One-Time Bootstrap
 
 Before CI can deploy anything, you need the state backend, OIDC provider, and
 ECR repo. These are in `terraform/bootstrap/` and use **local state**. Apply
@@ -95,7 +95,7 @@ terraform init -backend-config=backend.dev.hcl
 
 See [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) for detail.
 
-## Deploy (automatic on merge to main)
+## Deploy
 
 Every push to `main`:
 1. Builds the image, tags it with the git SHA, pushes to ECR
@@ -113,44 +113,7 @@ Pull requests get:
 - `terraform fmt`, `validate`, `tfsec`
 - `terraform plan` posted as a PR comment
 
-## Security Practices
-
-| Control                  | Implementation                                       |
-|--------------------------|------------------------------------------------------|
-| No long-lived AWS keys   | GitHub OIDC → IAM role, trust scoped to repo + ref   |
-| Least-privilege task role | Empty by default — policies added when app needs them |
-| Image scanning           | trivy in PR + deploy + weekly rescan; fail on H/C    |
-| Dep scanning             | pip-audit in PR + weekly                             |
-| Secret scanning          | gitleaks on every PR                                 |
-| IaC scanning             | tfsec on every PR                                    |
-| State protection         | S3 versioned + encrypted, DynamoDB lock              |
-| ECR immutability         | `image_tag_mutability = IMMUTABLE`                   |
-| Image signing            | Not yet — see "What I'd add next"                    |
-
-## Design Decisions
-
-**Why Terraform over CDK?** Declarative state is easier to review; cleaner
-`terraform plan` output for PR comments; standard in the gaming industry.
-
-**Why Fargate over App Runner or Lambda?** Fargate is the boring correct answer
-for a long-running HTTP service — no cold-start surprises, standard container
-model, well-understood ops. App Runner would be faster to set up but is less
-well-known. Lambda is over-indexed for a service that needs a healthcheck loop.
-
-**Why public subnets instead of private + NAT?** Saves ~$32/mo/AZ. Acceptable
-for a demo because the task SG only allows ingress from the ALB SG. For prod,
-switch to private subnets with a NAT Gateway or VPC endpoints.
-
-**Why tag-based naming (`bgs-hello-dev-*`) instead of Terraform workspaces for
-multi-env?** Only one env in this repo today. When a second env lands, it'll
-use a separate state file, not a workspace — workspace state drift is a
-known footgun for long-lived envs.
-
-**Why a `bootstrap` module at all?** The chicken-and-egg of "Terraform needs
-state storage, state storage needs Terraform" is cleaner to solve with an
-explicit local-state bootstrap than with magic scripts.
-
-## Cost (rough, us-east-1, 1 task always on)
+## Cost
 
 | Resource           | Monthly     |
 |--------------------|-------------|
@@ -190,15 +153,3 @@ deliberate friction to prevent accidents.
 1. Look at logs for stack traces
 2. Check if a recent deploy correlates — roll back if yes
 3. If persistent, open an incident; the service is user-impacting
-
-## What I'd Add Next
-
-- [ ] HTTPS with ACM + Route53 record
-- [ ] Cosign image signing + verification in deploy
-- [ ] `dev` + `prod` environments with promotion
-- [ ] Private subnets + NAT for prod
-- [ ] Datadog / New Relic integration
-- [ ] Blue/green via CodeDeploy
-- [ ] Cost anomaly alarms
-- [ ] Chaos testing (fault injection)
-- [ ] Tighter GitHub Actions IAM (currently PowerUser — needs trimming)

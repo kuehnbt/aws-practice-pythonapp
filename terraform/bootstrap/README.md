@@ -1,18 +1,19 @@
-# Bootstrap (one-time, run locally by a human)
+# Bootstrap
 
-Creates the resources that CI needs before it can run:
+Run this once per AWS account before CI can deploy anything. Uses local
+state because it builds the remote state backend for everything else.
 
-1. S3 bucket + DynamoDB table for Terraform remote state
-2. IAM OIDC provider for GitHub Actions
-3. IAM role that GitHub Actions assumes via OIDC (`github-actions-bgs-hello`)
-4. ECR repository (so CI has somewhere to push images)
-
-Uses **local state** — this is the chicken-and-egg layer for everything else.
+Creates:
+1. S3 bucket + DynamoDB table for remote state
+2. GitHub Actions OIDC provider
+3. Deploy role assumable by GitHub Actions
+4. ECR repository
 
 ## Prereqs
-- AWS CLI configured with an account you can admin
+
+- AWS CLI with admin on the target account
 - Terraform 1.5+
-- You know the GitHub org/repo this will deploy from
+- GitHub org/repo that will deploy from this role
 
 ## Apply
 
@@ -24,28 +25,32 @@ terraform apply \
   -var "aws_region=us-east-1"
 ```
 
-Outputs (all go into **GitHub Actions secrets**, not source files):
+## Outputs to GitHub secrets
 
-| Output            | GitHub secret     | Used by                                 |
-|-------------------|-------------------|-----------------------------------------|
-| `tf_state_bucket` | `TF_STATE_BUCKET` | `terraform init -backend-config=...`    |
-| `tf_lock_table`   | `TF_LOCK_TABLE`   | `terraform init -backend-config=...`    |
-| `gha_role_arn`    | `AWS_ROLE_ARN`    | `aws-actions/configure-aws-credentials` |
-| `ecr_repo_url`    | `ECR_REPO_URL`    | image push + PR plan placeholder tag    |
+| Output            | GitHub secret     |
+|-------------------|-------------------|
+| `tf_state_bucket` | `TF_STATE_BUCKET` |
+| `tf_lock_table`   | `TF_LOCK_TABLE`   |
+| `gha_role_arn`    | `AWS_ROLE_ARN`    |
+| `ecr_repo_url`    | `ECR_REPO_URL`    |
 
-`terraform/app/backend.tf` uses a **partial backend config** — bucket/table/
-region are supplied at `init` time via `-backend-config` flags from these
-secrets. Nothing to hand-edit in the repo.
+`terraform/app/backend.tf` is a partial config. Values are passed to
+`terraform init` via `-backend-config` flags (from the secrets above in CI,
+or from `backend.dev.hcl` locally).
 
-For local Terraform runs against `terraform/app/`:
+For local runs against `terraform/app`:
+
 ```bash
 cd ../app
-cp backend.dev.hcl.example backend.dev.hcl   # gitignored; fill in from outputs
+cp backend.dev.hcl.example backend.dev.hcl
+# edit the values
 terraform init -backend-config=backend.dev.hcl
 ```
 
 ## Destroy
-Destroy last — only after `terraform/app` is destroyed.
+
+Destroy `terraform/app` first, then this module.
+
 ```bash
 terraform destroy
 ```

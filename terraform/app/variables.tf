@@ -14,7 +14,7 @@ variable "env" {
 }
 
 variable "image_uri" {
-  description = "Full ECR image URI including the git SHA tag. Passed from CI."
+  description = "Full ECR image URI including the git SHA tag"
   type        = string
 }
 

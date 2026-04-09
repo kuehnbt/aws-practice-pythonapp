@@ -10,8 +10,8 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: write   # for terraform plan comment
-  id-token: write        # for OIDC to AWS
+  pull-requests: write
+  id-token: write
 
 env:
   PYTHON_VERSION: '3.12'
@@ -19,7 +19,6 @@ env:
   AWS_REGION:     us-east-1
 
 jobs:
-  # -------------------------------------------------------------------------
   python-quality:
     name: Python lint/type/test/audit
     runs-on: ubuntu-latest
@@ -48,13 +47,12 @@ jobs:
       - name: Pytest
         run: pytest --junitxml=junit.xml
 
+      # CVE-2025-62727 suppressed, see docs/security-suppressions.md
       - name: pip-audit
-        # Suppressions tracked in docs/security-suppressions.md
         run: |
           pip-audit -r src/app/requirements.txt --strict \
             --ignore-vuln CVE-2025-62727
 
-  # -------------------------------------------------------------------------
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
@@ -66,7 +64,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # -------------------------------------------------------------------------
   image-build-scan:
     name: Build image + trivy scan
     runs-on: ubuntu-latest
@@ -85,7 +82,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
 
-  # -------------------------------------------------------------------------
   iac-quality:
     name: Terraform fmt/validate/tfsec
     runs-on: ubuntu-latest
@@ -111,7 +107,6 @@ jobs:
           working_directory: terraform/app
           soft_fail: false
 
-  # -------------------------------------------------------------------------
   iac-plan:
     name: Terraform plan
     runs-on: ubuntu-latest

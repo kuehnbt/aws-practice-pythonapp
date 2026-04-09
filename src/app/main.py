@@ -1,7 +1,4 @@
-"""Minimal FastAPI service — hello + healthz + info.
-
-Deployed to AWS ECS Fargate via Terraform + GitHub Actions. See README.md.
-"""
+"""FastAPI service: /, /healthz, /info."""
 
 from __future__ import annotations
 

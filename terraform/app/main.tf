@@ -5,20 +5,15 @@ data "aws_availability_zones" "available" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  name        = "${var.project}-${var.env}"
-  az_count    = 2
-  azs         = slice(data.aws_availability_zones.available.names, 0, local.az_count)
-  common_tags = {
-    Service = var.project
-    Env     = var.env
-  }
+  name     = "${var.project}-${var.env}"
+  az_count = 2
+  azs      = slice(data.aws_availability_zones.available.names, 0, local.az_count)
 }
 
-# ---------------------------------------------------------------------------
-# Networking — minimal VPC with 2 public subnets (no NAT — saves ~$32/mo)
-# Tradeoff documented in README: tasks run in public subnets with public IPs.
-# Acceptable for a demo; for prod use private subnets + NAT or VPC endpoints.
-# ---------------------------------------------------------------------------
+# VPC
+# Uses public subnets so we don't pay for a NAT gateway. Task SG only allows
+# traffic from the ALB SG, so nothing is actually reachable from the internet
+# except the ALB itself. For prod, move to private subnets.
 
 resource "aws_vpc" "this" {
   cidr_block           = "10.0.0.0/16"
@@ -58,9 +53,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# ---------------------------------------------------------------------------
 # Security groups
-# ---------------------------------------------------------------------------
 
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb"
@@ -86,7 +79,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "service" {
   name        = "${local.name}-svc"
-  description = "ALB → Fargate task on container port"
+  description = "ALB to Fargate task on container port"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -98,7 +91,6 @@ resource "aws_security_group" "service" {
   }
 
   egress {
-    description = "All out (ECR, logs, etc.)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -106,9 +98,7 @@ resource "aws_security_group" "service" {
   }
 }
 
-# ---------------------------------------------------------------------------
 # Load balancer
-# ---------------------------------------------------------------------------
 
 resource "aws_lb" "this" {
   name               = substr("${local.name}-alb", 0, 32)
@@ -149,9 +139,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# IAM — task execution role (pulls image, writes logs) + task role (app-level)
-# ---------------------------------------------------------------------------
+# IAM roles for ECS tasks
 
 data "aws_iam_policy_document" "ecs_assume" {
   statement {
@@ -178,21 +166,15 @@ resource "aws_iam_role" "task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
-# App has no AWS API calls yet. Keep this role empty — add policies when the
-# app actually needs them. Least privilege by default.
-
-# ---------------------------------------------------------------------------
-# CloudWatch logs
-# ---------------------------------------------------------------------------
+# Task role intentionally has no attached policies. Add them when the app
+# needs to call an AWS API.
 
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${local.name}"
   retention_in_days = var.log_retention_days
 }
 
-# ---------------------------------------------------------------------------
-# ECS cluster + task def + service
-# ---------------------------------------------------------------------------
+# ECS
 
 resource "aws_ecs_cluster" "this" {
   name = local.name
@@ -270,13 +252,11 @@ resource "aws_ecs_service" "this" {
   depends_on = [aws_lb_listener.http]
 }
 
-# ---------------------------------------------------------------------------
-# CloudWatch alarms
-# ---------------------------------------------------------------------------
+# Alarms
 
 resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   alarm_name          = "${local.name}-unhealthy-hosts"
-  alarm_description   = "Fargate task(s) failing ALB health checks. Runbook: README.md#runbook"
+  alarm_description   = "Fargate task(s) failing ALB health checks. See README runbook."
   namespace           = "AWS/ApplicationELB"
   metric_name         = "UnHealthyHostCount"
   statistic           = "Maximum"

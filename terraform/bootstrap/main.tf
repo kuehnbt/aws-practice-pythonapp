@@ -7,9 +7,7 @@ locals {
   ]
 }
 
-# ---------------------------------------------------------------------------
-# Remote state backend — S3 bucket + DynamoDB lock table
-# ---------------------------------------------------------------------------
+# Remote state backend
 
 resource "aws_s3_bucket" "tf_state" {
   bucket        = "${var.project}-tfstate-${local.account_id}"
@@ -51,9 +49,7 @@ resource "aws_dynamodb_table" "tf_lock" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# GitHub Actions OIDC provider + deploy role
-# ---------------------------------------------------------------------------
+# GitHub Actions OIDC
 
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
@@ -90,9 +86,9 @@ resource "aws_iam_role" "gha_deploy" {
   assume_role_policy = data.aws_iam_policy_document.gha_trust.json
 }
 
-# TODO: tighten this in the "app" terraform. For bootstrap, attach a broad
-# policy scoped to the services we use so CI can run tf apply end to end.
-# Right now this is intentionally loose — fix before showing off.
+# TODO: tighten these. PowerUser + IAMFullAccess lets CI apply terraform/app
+# end to end but is wider than required. Narrow to the services used once the
+# pipeline is green.
 resource "aws_iam_role_policy_attachment" "gha_poweruser" {
   role       = aws_iam_role.gha_deploy.name
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
@@ -103,9 +99,7 @@ resource "aws_iam_role_policy_attachment" "gha_iam_limited" {
   policy_arn = "arn:aws:iam::aws:policy/IAMFullAccess"
 }
 
-# ---------------------------------------------------------------------------
-# ECR repo (so CI has somewhere to push the image)
-# ---------------------------------------------------------------------------
+# ECR
 
 resource "aws_ecr_repository" "app" {
   name                 = var.project

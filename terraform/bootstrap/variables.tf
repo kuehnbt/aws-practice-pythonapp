@@ -1,13 +1,11 @@
 variable "aws_region" {
-  description = "AWS region for bootstrap resources."
-  type        = string
-  default     = "us-east-1"
+  type    = string
+  default = "us-east-1"
 }
 
 variable "project" {
-  description = "Short project identifier used as a prefix."
-  type        = string
-  default     = "bgs-hello"
+  type    = string
+  default = "bgs-hello"
 }
 
 variable "github_repo" {

@@ -1,4 +1,4 @@
-# bgs-hello
+# aws-practice-pythonapp
 
 Minimal FastAPI service deployed to AWS ECS Fargate via GitHub Actions + Terraform.
 

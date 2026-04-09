@@ -2,7 +2,7 @@ name: Weekly Security Rescan
 
 on:
   schedule:
-    - cron: '17 13 * * 1'   # Mondays 13:17 UTC
+    - cron: '17 13 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -24,8 +24,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pip-audit
+      # CVE-2025-62727 suppressed, see docs/security-suppressions.md
       - name: pip-audit
-        # Suppressions tracked in docs/security-suppressions.md
         run: |
           pip-audit -r src/app/requirements.txt --strict \
             --ignore-vuln CVE-2025-62727

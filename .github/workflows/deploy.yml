@@ -117,10 +117,10 @@ jobs:
               cat /tmp/body; echo
               exit 0
             fi
-            echo "attempt $i: HTTP $code — sleeping"
+            echo "attempt $i: HTTP $code, sleeping"
             sleep 10
           done
-          echo "Smoke test FAILED — healthz never returned 200"
+          echo "Smoke test failed: healthz never returned 200"
           exit 1
 
       - name: Rollback note

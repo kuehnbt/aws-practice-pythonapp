@@ -1,9 +1,6 @@
 .DEFAULT_GOAL := help
 
-# ---------------------------------------------------------------------------
-# Cross-platform: detect Windows vs Unix so the same Makefile works in
-# Git Bash / WSL / Linux / macOS.
-# ---------------------------------------------------------------------------
+# Detect Windows vs Unix so the same targets work in cmd, Git Bash, and bash.
 ifeq ($(OS),Windows_NT)
     PY       ?= python
     VENV     ?= .venv
@@ -62,8 +59,9 @@ type: ## Type check
 test: ## Run tests with coverage
 	$(PYTEST)
 
+# CVE-2025-62727 suppressed, see docs/security-suppressions.md
 .PHONY: audit
-audit: ## Dependency vulnerability scan (runtime deps only)
+audit: ## Dependency vulnerability scan
 	$(AUDIT) -r src/app/requirements.txt --strict --ignore-vuln CVE-2025-62727
 
 .PHONY: check

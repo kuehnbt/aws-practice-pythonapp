@@ -1,9 +1,8 @@
-# Copy to backend.dev.hcl (gitignored) and fill in values from
-# `terraform -chdir=../bootstrap output`.
-#
-#     terraform init -backend-config=backend.dev.hcl
+# Copy to backend.dev.hcl and fill in the values from
+#   terraform -chdir=../bootstrap output
+# Then: terraform init -backend-config=backend.dev.hcl
 
-bucket         = "bgs-hello-tfstate-REPLACE-WITH-YOUR-ACCOUNT-ID"
+bucket         = "bgs-hello-tfstate-<ACCOUNT_ID>"
 key            = "bgs-hello/app/terraform.tfstate"
 region         = "us-east-1"
 dynamodb_table = "bgs-hello-tflock"

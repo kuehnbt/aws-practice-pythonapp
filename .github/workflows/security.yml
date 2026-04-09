@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pip-audit
-      # CVE-2025-62727 suppressed, see docs/security-suppressions.md
+      # CVE-2025-62727: starlette, blocked by fastapi upper bound
       - name: pip-audit
         run: |
           pip-audit -r src/app/requirements.txt --strict \
@@ -58,6 +58,7 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
       - name: Open issue on failure
         if: failure()

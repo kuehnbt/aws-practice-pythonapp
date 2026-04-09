@@ -47,7 +47,7 @@ jobs:
       - name: Pytest
         run: pytest --junitxml=junit.xml
 
-      # CVE-2025-62727 suppressed, see docs/security-suppressions.md
+      # CVE-2025-62727: starlette, blocked by fastapi upper bound
       - name: pip-audit
         run: |
           pip-audit -r src/app/requirements.txt --strict \
@@ -81,6 +81,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: os,library
+          trivyignores: .trivyignore
 
   iac-quality:
     name: Terraform fmt/validate/tfsec

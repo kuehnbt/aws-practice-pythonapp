@@ -59,7 +59,7 @@ type: ## Type check
 test: ## Run tests with coverage
 	$(PYTEST)
 
-# CVE-2025-62727 suppressed, see docs/security-suppressions.md
+# CVE-2025-62727: starlette DoS, blocked by fastapi upper bound. Revisit monthly.
 .PHONY: audit
 audit: ## Dependency vulnerability scan
 	$(AUDIT) -r src/app/requirements.txt --strict --ignore-vuln CVE-2025-62727
